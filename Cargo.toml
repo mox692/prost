@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "conformance",
+  "examples",
   "prost",
   "prost-build",
   "prost-derive",

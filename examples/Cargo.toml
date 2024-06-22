@@ -1,0 +1,28 @@
+[package]
+name = "examples"
+version = "0.0.0"
+publish = false
+
+build = "src/build.rs"
+
+[features]
+default = []
+
+[dependencies]
+prost = { path = "../prost" }
+bytes = "1"
+prost-types = { path = "../prost-types" }
+
+[dev-dependencies]
+prost-build = { path = "../prost-build" }
+tempfile = "3"
+protobuf = { path = "../protobuf" }
+
+[build-dependencies]
+cfg-if = "1"
+env_logger = { version = "0.11", default-features = false }
+prost-build = { path = "../prost-build" }
+
+[[example]]
+name = "hello"
+path = "hello.rs"
