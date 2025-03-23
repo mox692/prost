@@ -5,8 +5,8 @@ use prost_types::{
     FieldDescriptorProto,
 };
 
-use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
+use crate::{collections::VecType, extern_paths::ExternPaths};
 use crate::{BytesType, Config, MapType, ServiceGenerator};
 
 /// The context providing all the global information needed to generate code.
@@ -103,6 +103,15 @@ impl<'a> Context<'a> {
     pub(crate) fn map_type(&self, fq_message_name: &str, field_name: &str) -> MapType {
         self.config
             .map_type
+            .get_first_field(fq_message_name, field_name)
+            .copied()
+            .unwrap_or_default()
+    }
+
+    /// Returns the vec type configured for the named message field.
+    pub(crate) fn vec_type(&self, fq_message_name: &str, field_name: &str) -> VecType {
+        self.config
+            .vec_type
             .get_first_field(fq_message_name, field_name)
             .copied()
             .unwrap_or_default()

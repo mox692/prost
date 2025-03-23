@@ -15,6 +15,7 @@ use prost::Message;
 use prost_types::{FileDescriptorProto, FileDescriptorSet};
 
 use crate::code_generator::CodeGenerator;
+use crate::collections::VecType;
 use crate::context::Context;
 use crate::extern_paths::ExternPaths;
 use crate::message_graph::MessageGraph;
@@ -31,6 +32,7 @@ pub struct Config {
     pub(crate) file_descriptor_set_path: Option<PathBuf>,
     pub(crate) service_generator: Option<Box<dyn ServiceGenerator>>,
     pub(crate) map_type: PathMap<MapType>,
+    pub(crate) vec_type: PathMap<VecType>,
     pub(crate) bytes_type: PathMap<BytesType>,
     pub(crate) type_attributes: PathMap<String>,
     pub(crate) message_attributes: PathMap<String>,
@@ -119,6 +121,19 @@ impl Config {
         for matcher in paths {
             self.map_type
                 .insert(matcher.as_ref().to_string(), MapType::BTreeMap);
+        }
+        self
+    }
+
+    /// TODO: accept the pair path and the size
+    pub fn repeated_field<I, S>(&mut self, paths: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        for matcher in paths {
+            self.vec_type
+                .insert(matcher.as_ref().to_string(), VecType::SmallVec);
         }
         self
     }
@@ -1173,6 +1188,7 @@ impl default::Default for Config {
             file_descriptor_set_path: None,
             service_generator: None,
             map_type: PathMap::default(),
+            vec_type: PathMap::default(),
             bytes_type: PathMap::default(),
             type_attributes: PathMap::default(),
             message_attributes: PathMap::default(),

@@ -87,6 +87,7 @@ impl Field {
                     ::prost::encoding::group::encode(#tag, msg, buf);
                 }
             },
+            _ => unimplemented!(),
         }
     }
 
@@ -107,6 +108,7 @@ impl Field {
             Label::Repeated => quote! {
                 ::prost::encoding::group::merge_repeated(tag, wire_type, #ident, buf, ctx)
             },
+            _ => unimplemented!(),
         }
     }
 
@@ -122,6 +124,7 @@ impl Field {
             Label::Repeated => quote! {
                 ::prost::encoding::group::encoded_len_repeated(#tag, &#ident)
             },
+            _ => unimplemented!(),
         }
     }
 
@@ -130,6 +133,7 @@ impl Field {
             Label::Optional => quote!(#ident = ::core::option::Option::None),
             Label::Required => quote!(#ident.clear()),
             Label::Repeated => quote!(#ident.clear()),
+            _ => unimplemented!(),
         }
     }
 }
