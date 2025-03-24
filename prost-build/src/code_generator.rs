@@ -432,7 +432,18 @@ impl<'b> CodeGenerator<'_, 'b> {
             }
             Label::Required => self.buf.push_str(", required"),
             Label::Repeated => {
-                self.buf.push_str(", repeated");
+                let vec_type = self
+                    .context
+                    .vec_type(fq_message_name, field.descriptor.name());
+
+                match vec_type {
+                    VecType::Vec => {
+                        self.buf.push_str(", repeated");
+                    }
+                    VecType::SmallVec => {
+                        self.buf.push_str(", repeated_smallvec");
+                    }
+                };
                 if can_pack(&field.descriptor)
                     && !field
                         .descriptor

@@ -212,12 +212,37 @@ macro_rules! encode_repeated {
 /// Helper macro which emits a `merge_repeated` function for the numeric type.
 macro_rules! merge_repeated_numeric {
     ($ty:ty,
-     $wire_type:expr,
-     $merge:ident,
-     $merge_repeated:ident) => {
+    $wire_type:expr,
+    $merge:ident,
+    $merge_repeated:ident,
+    $merge_repeated_smallvec:ident) => {
         pub fn $merge_repeated(
             wire_type: WireType,
             values: &mut Vec<$ty>,
+            buf: &mut impl Buf,
+            ctx: DecodeContext,
+        ) -> Result<(), DecodeError> {
+            if wire_type == WireType::LengthDelimited {
+                // Packed.
+                merge_loop(values, buf, ctx, |values, buf, ctx| {
+                    let mut value = Default::default();
+                    $merge($wire_type, &mut value, buf, ctx)?;
+                    values.push(value);
+                    Ok(())
+                })
+            } else {
+                // Unpacked.
+                check_wire_type($wire_type, wire_type)?;
+                let mut value = Default::default();
+                $merge(wire_type, &mut value, buf, ctx)?;
+                values.push(value);
+                Ok(())
+            }
+        }
+
+        pub fn $merge_repeated_smallvec(
+            wire_type: WireType,
+            values: &mut smallvec::SmallVec<[$ty; 16]>,
             buf: &mut impl Buf,
             ctx: DecodeContext,
         ) -> Result<(), DecodeError> {
@@ -288,7 +313,7 @@ macro_rules! varint {
                 }
             }
 
-            merge_repeated_numeric!($ty, WireType::Varint, merge, merge_repeated);
+            merge_repeated_numeric!($ty, WireType::Varint, merge, merge_repeated, merge_repeated_smallvec);
 
             #[inline]
             pub fn encoded_len(tag: u32, $to_uint64_value: &$ty) -> usize {
@@ -418,7 +443,13 @@ macro_rules! fixed_width {
                 }
             }
 
-            merge_repeated_numeric!($ty, $wire_type, merge, merge_repeated);
+            merge_repeated_numeric!(
+                $ty,
+                $wire_type,
+                merge,
+                merge_repeated,
+                merge_repeated_smallvec
+            );
 
             #[inline]
             pub fn encoded_len(tag: u32, _: &$ty) -> usize {
@@ -828,6 +859,22 @@ pub mod message {
     pub fn merge_repeated<M>(
         wire_type: WireType,
         messages: &mut Vec<M>,
+        buf: &mut impl Buf,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError>
+    where
+        M: Message + Default,
+    {
+        check_wire_type(WireType::LengthDelimited, wire_type)?;
+        let mut msg = M::default();
+        merge(WireType::LengthDelimited, &mut msg, buf, ctx)?;
+        messages.push(msg);
+        Ok(())
+    }
+
+    pub fn merge_repeated_smallvec<M>(
+        wire_type: WireType,
+        messages: &mut smallvec::SmallVec<[M; 16]>,
         buf: &mut impl Buf,
         ctx: DecodeContext,
     ) -> Result<(), DecodeError>

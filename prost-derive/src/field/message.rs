@@ -105,7 +105,9 @@ impl Field {
             Label::Repeated => quote! {
                 ::prost::encoding::message::merge_repeated(wire_type, #ident, buf, ctx)
             },
-            _ => unimplemented!(),
+            Label::RepeatedSmallVec => quote! {
+                ::prost::encoding::message::merge_repeated_smallvec(wire_type, #ident, buf, ctx)
+            },
         }
     }
 

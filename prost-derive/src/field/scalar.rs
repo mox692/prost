@@ -144,7 +144,8 @@ impl Field {
         let module = self.ty.module();
         let merge_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
-            Kind::Repeated | Kind::Packed | Kind::RepeatedSmallVec => quote!(merge_repeated),
+            Kind::Repeated | Kind::Packed => quote!(merge_repeated),
+            Kind::RepeatedSmallVec => quote!(merge_repeated_smallvec),
         };
         let merge_fn = quote!(::prost::encoding::#module::#merge_fn);
 
