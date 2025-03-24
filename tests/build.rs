@@ -52,6 +52,11 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .repeated_field(&[".smallvec"])
+        .compile_protos(&[src.join("smallvec.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
         .compile_protos(&[src.join("recursive_oneof.proto")], includes)
         .unwrap();
 

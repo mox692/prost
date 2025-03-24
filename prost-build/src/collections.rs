@@ -9,6 +9,14 @@ pub(crate) enum MapType {
     BTreeMap,
 }
 
+#[non_exhaustive]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
+pub(crate) enum VecType {
+    #[default]
+    Vec,
+    SmallVec,
+}
+
 /// The bytes collection type to output for Protobuf `bytes` fields.
 #[non_exhaustive]
 #[derive(Default, Clone, Copy, Debug, PartialEq)]

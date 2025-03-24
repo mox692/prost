@@ -84,6 +84,7 @@ impl Field {
                 Kind::Packed
             }
             (Some(Label::Repeated), _, false) => Kind::Repeated,
+            (Some(Label::RepeatedSmallVec), _, _) => Kind::RepeatedSmallVec,
         };
 
         Ok(Some(Field { ty, kind, tag }))
@@ -98,7 +99,9 @@ impl Field {
                 }
                 Kind::Optional(..) => bail!("invalid optional attribute on oneof field"),
                 Kind::Required(..) => bail!("invalid required attribute on oneof field"),
-                Kind::Packed | Kind::Repeated => bail!("invalid repeated attribute on oneof field"),
+                Kind::Packed | Kind::Repeated | Kind::RepeatedSmallVec => {
+                    bail!("invalid repeated attribute on oneof field")
+                }
             }
         } else {
             Ok(None)
@@ -109,7 +112,7 @@ impl Field {
         let module = self.ty.module();
         let encode_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encode),
-            Kind::Repeated => quote!(encode_repeated),
+            Kind::Repeated | Kind::RepeatedSmallVec => quote!(encode_repeated),
             Kind::Packed => quote!(encode_packed),
         };
         let encode_fn = quote!(::prost::encoding::#module::#encode_fn);
@@ -129,7 +132,7 @@ impl Field {
                     #encode_fn(#tag, value, buf);
                 }
             },
-            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
+            Kind::Required(..) | Kind::Repeated | Kind::Packed | Kind::RepeatedSmallVec => quote! {
                 #encode_fn(#tag, &#ident, buf);
             },
         }
@@ -142,11 +145,16 @@ impl Field {
         let merge_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(merge),
             Kind::Repeated | Kind::Packed => quote!(merge_repeated),
+            Kind::RepeatedSmallVec => quote!(merge_repeated_smallvec),
         };
         let merge_fn = quote!(::prost::encoding::#module::#merge_fn);
 
         match self.kind {
-            Kind::Plain(..) | Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
+            Kind::Plain(..)
+            | Kind::Required(..)
+            | Kind::Repeated
+            | Kind::Packed
+            | Kind::RepeatedSmallVec => quote! {
                 #merge_fn(wire_type, #ident, buf, ctx)
             },
             Kind::Optional(..) => quote! {
@@ -164,6 +172,7 @@ impl Field {
         let encoded_len_fn = match self.kind {
             Kind::Plain(..) | Kind::Optional(..) | Kind::Required(..) => quote!(encoded_len),
             Kind::Repeated => quote!(encoded_len_repeated),
+            Kind::RepeatedSmallVec => quote!(encoded_len_repeated),
             Kind::Packed => quote!(encoded_len_packed),
         };
         let encoded_len_fn = quote!(::prost::encoding::#module::#encoded_len_fn);
@@ -183,7 +192,7 @@ impl Field {
             Kind::Optional(..) => quote! {
                 #ident.as_ref().map_or(0, |value| #encoded_len_fn(#tag, value))
             },
-            Kind::Required(..) | Kind::Repeated | Kind::Packed => quote! {
+            Kind::Required(..) | Kind::Repeated | Kind::RepeatedSmallVec | Kind::Packed => quote! {
                 #encoded_len_fn(#tag, &#ident)
             },
         }
@@ -199,13 +208,14 @@ impl Field {
                 }
             }
             Kind::Optional(_) => quote!(#ident = ::core::option::Option::None),
-            Kind::Repeated | Kind::Packed => quote!(#ident.clear()),
+            Kind::Repeated | Kind::RepeatedSmallVec | Kind::Packed => quote!(#ident.clear()),
         }
     }
 
     /// Returns an expression which evaluates to the default value of the field.
     pub fn default(&self) -> TokenStream {
         match self.kind {
+            Kind::RepeatedSmallVec => quote!(::smallvec::SmallVec::new()),
             Kind::Plain(ref value) | Kind::Required(ref value) => value.owned(),
             Kind::Optional(_) => quote!(::core::option::Option::None),
             Kind::Repeated | Kind::Packed => quote!(::prost::alloc::vec::Vec::new()),
@@ -253,6 +263,21 @@ impl Field {
             Kind::Repeated | Kind::Packed => {
                 quote! {
                     struct #wrapper_name<'a>(&'a ::prost::alloc::vec::Vec<#inner_ty>);
+                    impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
+                        fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+                            let mut vec_builder = f.debug_list();
+                            for v in self.0 {
+                                #wrapper
+                                vec_builder.entry(&Inner(v));
+                            }
+                            vec_builder.finish()
+                        }
+                    }
+                }
+            }
+            Kind::RepeatedSmallVec => {
+                quote! {
+                    struct #wrapper_name<'a>(&'a ::smallvec::SmallVec<[#inner_ty ;16]>);
                     impl<'a> ::core::fmt::Debug for #wrapper_name<'a> {
                         fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
                             let mut vec_builder = f.debug_list();
@@ -327,7 +352,7 @@ impl Field {
                         }
                     }
                 }
-                Kind::Repeated | Kind::Packed => {
+                Kind::Repeated | Kind::RepeatedSmallVec | Kind::Packed => {
                     let iter_doc = format!(
                         "Returns an iterator which yields the valid enum values contained in `{}`.",
                         ident_str,
@@ -595,6 +620,8 @@ pub enum Kind {
     Required(DefaultValue),
     /// A repeated scalar field.
     Repeated,
+    /// A repeated smallvec
+    RepeatedSmallVec,
     /// A packed repeated scalar field.
     Packed,
 }

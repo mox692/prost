@@ -15,6 +15,7 @@ use prost_types::{
 };
 
 use crate::ast::{Comments, Method, Service};
+use crate::collections::VecType;
 use crate::context::Context;
 use crate::ident::{strip_enum_prefix, to_snake, to_upper_camel};
 use crate::Config;
@@ -431,7 +432,18 @@ impl<'b> CodeGenerator<'_, 'b> {
             }
             Label::Required => self.buf.push_str(", required"),
             Label::Repeated => {
-                self.buf.push_str(", repeated");
+                let vec_type = self
+                    .context
+                    .vec_type(fq_message_name, field.descriptor.name());
+
+                match vec_type {
+                    VecType::Vec => {
+                        self.buf.push_str(", repeated");
+                    }
+                    VecType::SmallVec => {
+                        self.buf.push_str(", repeated_smallvec");
+                    }
+                };
                 if can_pack(&field.descriptor)
                     && !field
                         .descriptor
@@ -491,8 +503,19 @@ impl<'b> CodeGenerator<'_, 'b> {
         let prost_path = self.context.prost_path();
 
         if repeated {
-            self.buf
-                .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
+            let vec_type = self
+                .context
+                .vec_type(fq_message_name, field.descriptor.name());
+
+            match vec_type {
+                VecType::Vec => {
+                    self.buf
+                        .push_str(&format!("{}::alloc::vec::Vec<", prost_path));
+                }
+                VecType::SmallVec => {
+                    self.buf.push_str(&format!("smallvec::SmallVec<["));
+                }
+            };
         } else if optional {
             self.buf.push_str("::core::option::Option<");
         }
@@ -501,6 +524,19 @@ impl<'b> CodeGenerator<'_, 'b> {
                 .push_str(&format!("{}::alloc::boxed::Box<", prost_path));
         }
         self.buf.push_str(&ty);
+
+        if repeated {
+            let vec_type = self
+                .context
+                .vec_type(fq_message_name, field.descriptor.name());
+            match vec_type {
+                VecType::SmallVec => {
+                    self.buf.push_str(&format!("; 16]"));
+                }
+                _ => (),
+            };
+        }
+
         if boxed {
             self.buf.push('>');
         }

@@ -182,6 +182,8 @@ pub enum Label {
     Required,
     /// A repeated field.
     Repeated,
+    /// docs
+    RepeatedSmallVec,
 }
 
 impl Label {
@@ -190,11 +192,17 @@ impl Label {
             Label::Optional => "optional",
             Label::Required => "required",
             Label::Repeated => "repeated",
+            Label::RepeatedSmallVec => "repeated_smallvec",
         }
     }
 
     fn variants() -> slice::Iter<'static, Label> {
-        const VARIANTS: &[Label] = &[Label::Optional, Label::Required, Label::Repeated];
+        const VARIANTS: &[Label] = &[
+            Label::Optional,
+            Label::Required,
+            Label::Repeated,
+            Label::RepeatedSmallVec,
+        ];
         VARIANTS.iter()
     }
 

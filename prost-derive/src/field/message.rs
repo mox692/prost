@@ -87,6 +87,7 @@ impl Field {
                     ::prost::encoding::message::encode(#tag, msg, buf);
                 }
             },
+            _ => unimplemented!(),
         }
     }
 
@@ -104,6 +105,9 @@ impl Field {
             Label::Repeated => quote! {
                 ::prost::encoding::message::merge_repeated(wire_type, #ident, buf, ctx)
             },
+            Label::RepeatedSmallVec => quote! {
+                ::prost::encoding::message::merge_repeated_smallvec(wire_type, #ident, buf, ctx)
+            },
         }
     }
 
@@ -119,6 +123,7 @@ impl Field {
             Label::Repeated => quote! {
                 ::prost::encoding::message::encoded_len_repeated(#tag, &#ident)
             },
+            _ => unimplemented!(),
         }
     }
 
@@ -127,6 +132,7 @@ impl Field {
             Label::Optional => quote!(#ident = ::core::option::Option::None),
             Label::Required => quote!(#ident.clear()),
             Label::Repeated => quote!(#ident.clear()),
+            _ => unimplemented!(),
         }
     }
 }
