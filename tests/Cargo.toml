@@ -17,6 +17,7 @@ anyhow = "1.0.1"
 cfg-if = "1"
 prost = { path = "../prost" }
 prost-types = { path = "../prost-types" }
+smallvec = "1.14.0"
 
 [dev-dependencies]
 prost-build = { path = "../prost-build", features = ["cleanup-markdown"] }

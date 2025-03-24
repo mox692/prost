@@ -49,6 +49,8 @@ mod no_shadowed_types;
 #[cfg(test)]
 mod no_unused_results;
 #[cfg(test)]
+mod smallvec;
+#[cfg(test)]
 mod submessage_without_package;
 #[cfg(test)]
 mod type_names;
